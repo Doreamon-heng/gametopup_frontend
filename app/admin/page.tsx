@@ -302,7 +302,7 @@ const currency = (amount: number | string, unit: 'USD' | 'KHR') => (
 
     ? `$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-    : `áŸ›${Number(amount).toLocaleString('en-US')}`
+    : `៛${Number(amount).toLocaleString('en-US')}`
 
 );
 
@@ -1105,7 +1105,7 @@ export default function AdminPage() {
 
                 <StatCard label="Total sales Â· USD" value={currency(summary?.sales_usd ?? 0, 'USD')} note="Confirmed payments only" icon={CircleDollarSign} accent="text-cyan-200 bg-cyan-300/10" />
 
-                <StatCard label="Total sales Â· KHR" value={currency(summary?.sales_khr ?? 0, 'KHR')} note="Confirmed payments only" icon={Wallet} accent="text-violet-200 bg-violet-300/10" />
+                <StatCard label="Total sales · KHR" value={currency(summary?.sales_khr ?? 0, 'KHR')} note="Confirmed payments only" icon={Wallet} accent="text-violet-200 bg-violet-300/10" />
 
                 <StatCard label="Orders" value={(summary?.total_orders ?? 0).toLocaleString()} note="All-time order volume" icon={ClipboardList} accent="text-amber-200 bg-amber-300/10" />
 

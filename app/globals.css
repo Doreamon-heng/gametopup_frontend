@@ -1011,6 +1011,11 @@ body {
 .store-how-grid article > span { margin-bottom:22px; font-size:15px; }
 .store-how-grid strong { font-size:18px!important; line-height:1.4; }
 .store-how-grid p { margin-top:10px; font-size:16px!important; line-height:1.65; }
+.store-pending-order { display:grid; gap:9px; margin:17px 0; padding:15px; border:1px solid rgb(252 211 77 / 25%); border-radius:12px; background:rgb(245 158 11 / 8%); }
+.store-pending-order strong { color:#fde68a; font-size:15px; }
+.store-pending-order > span { color:#c5b990; font-size:13px; line-height:1.5; }
+.store-pending-order a { display:inline-flex; width:max-content; align-items:center; gap:7px; margin-top:2px; color:#d9f99d; font-size:14px; font-weight:800; text-decoration:none; }
+.store-pending-order a:hover { color:#ecfccb; }
 
 @media (max-width: 560px) {
   .store-how-grid article { min-height:0; padding:18px; }

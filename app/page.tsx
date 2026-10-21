@@ -21,8 +21,10 @@ import {
   WalletCards,
   Zap,
 } from 'lucide-react';
-import { Game, getErrorMessage, getGameImageUrl, getGames, Package, createOrder } from '@/app/lib/api';
+import { checkOrderStatus, Game, getErrorMessage, getGameImageUrl, getGames, Package, createOrder } from '@/app/lib/api';
 import LoadingDialog from '@/app/components/LoadingDialog';
+
+const PENDING_ORDER_KEY = 'nexus.pending-order-number';
 
 const formatPrice = (pkg: Package, currency: 'USD' | 'KHR') => (
   currency === 'USD'
@@ -41,6 +43,8 @@ export default function Storefront() {
   const [currency, setCurrency] = useState<'USD' | 'KHR'>('USD');
   const [loadingGames, setLoadingGames] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingOrderNumber, setPendingOrderNumber] = useState<string | null>(null);
+  const [checkingPreviousOrder, setCheckingPreviousOrder] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -65,6 +69,51 @@ export default function Storefront() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const savedOrderNumber = window.localStorage.getItem(PENDING_ORDER_KEY);
+
+    if (!savedOrderNumber) {
+      setCheckingPreviousOrder(false);
+      return () => { cancelled = true; };
+    }
+
+    setPendingOrderNumber(savedOrderNumber);
+    checkOrderStatus(savedOrderNumber)
+      .then((order) => {
+        if (cancelled) return;
+        if (order.payment_status === 'pending') {
+          setPendingOrderNumber(order.order_number);
+        } else {
+          window.localStorage.removeItem(PENDING_ORDER_KEY);
+          setPendingOrderNumber(null);
+        }
+      })
+      .catch(() => {
+        // Keep the order available to resume if its status cannot be checked yet.
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingPreviousOrder(false);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!pendingOrderNumber) return;
+
+    const checkPendingOrder = () => {
+      void checkOrderStatus(pendingOrderNumber).then((order) => {
+        if (order.payment_status === 'pending') return;
+        window.localStorage.removeItem(PENDING_ORDER_KEY);
+        setPendingOrderNumber(null);
+      }).catch(() => undefined);
+    };
+
+    const interval = window.setInterval(checkPendingOrder, 20000);
+    return () => window.clearInterval(interval);
+  }, [pendingOrderNumber]);
+
   const selectedGame = games.find((game) => game.id === selectedGameId) ?? null;
   const selectedPackage = selectedGame?.packages.find((pkg) => pkg.id === selectedPackageId) ?? null;
   const packageGroups = selectedGame?.packages ?? [];
@@ -75,6 +124,8 @@ export default function Storefront() {
     selectedPackage
       && playerId.trim()
       && (!selectedGame?.has_zone_id || zoneId.trim())
+      && !pendingOrderNumber
+      && !checkingPreviousOrder
       && !submitting,
   );
 
@@ -107,6 +158,7 @@ export default function Storefront() {
         zone_id: zoneId.trim() || undefined,
         currency,
       });
+      window.localStorage.setItem(PENDING_ORDER_KEY, order.order_number);
       router.push(`/checkout/${order.order_number}`);
     } catch (requestError) {
       const message = getErrorMessage(requestError);
@@ -118,7 +170,7 @@ export default function Storefront() {
   return (
     <>
     <LoadingDialog
-      open={loadingGames || submitting}
+      open={submitting || (loadingGames && !checkingPreviousOrder && !pendingOrderNumber)}
       title={submitting ? 'Creating your order' : 'Loading the store'}
       message={submitting ? 'Please wait while we prepare your secure Bakong checkout.' : 'Fetching the latest games and top-up packages.'}
     />
@@ -186,10 +238,11 @@ export default function Storefront() {
           </div>
 
           <aside className="store-order-panel" aria-label="Order details"><div className="store-order-heading"><span className="store-step-label">03 / PLAYER DETAILS</span><span className="store-order-lock"><LockKeyhole size={15} /></span></div><h2>Almost there</h2><p className="store-order-intro">Enter your player details to continue.</p>
+            {pendingOrderNumber && <div role="status" className="store-pending-order"><strong>You have a payment waiting</strong><span>Resume your existing payment before creating another order.</span><Link href={`/checkout/${encodeURIComponent(pendingOrderNumber)}`}>Resume payment <ArrowRight size={15} /></Link></div>}
             {selectedGame ? <div className="store-selected-game"><span className="store-selected-game-art">{getGameImageUrl(selectedGame.icon_url || selectedGame.banner_url) ? <Image src={getGameImageUrl(selectedGame.icon_url || selectedGame.banner_url) as string} alt="" fill unoptimized sizes="52px" className="object-cover" /> : <Gamepad2 size={21} />}</span><span><strong>{selectedGame.name}</strong><small>{selectedPackage?.name ?? 'Select a package'}</small></span></div> : <div className="store-selected-game store-selected-empty"><Gamepad2 size={20} /><span>Choose a game to start</span></div>}
             <div className="store-form-fields"><label htmlFor="player-id">Player ID <i>*</i><input id="player-id" autoComplete="off" maxLength={100} value={playerId} onChange={(event) => setPlayerId(event.target.value)} placeholder="Enter your Player ID" disabled={!selectedGame} /><small>Enter the ID connected to your game account.</small></label>{selectedGame?.has_zone_id && <label htmlFor="zone-id">Zone / Server ID <i>*</i><input id="zone-id" autoComplete="off" maxLength={100} value={zoneId} onChange={(event) => setZoneId(event.target.value)} placeholder="Enter your Zone ID" /></label>}</div>
             <div className="store-order-total"><div><span>Payment method</span><strong><span className="store-khqr-mark">K</span> Bakong KHQR</strong></div><div className="store-total-line"><span>Total <small>{currency}</small></span><strong>{selectedPackage ? formatPrice(selectedPackage, currency) : '—'}</strong></div></div>
-            {error && <p role="alert" className="store-error">{error}</p>}<button type="button" disabled={!canCheckout} onClick={handleCheckout} className="store-submit-button">{submitting ? 'Creating your order…' : 'Continue to payment'} {!submitting && <ArrowRight size={17} />}</button><p className="store-payment-note"><ShieldCheck size={14} /> Your payment details are protected.</p>
+            {error && <p role="alert" className="store-error">{error}</p>}<button type="button" disabled={!canCheckout} onClick={handleCheckout} className="store-submit-button">{pendingOrderNumber ? 'Resume the payment above' : checkingPreviousOrder ? 'Checking previous payment…' : submitting ? 'Creating your order…' : 'Continue to payment'} {!submitting && !pendingOrderNumber && !checkingPreviousOrder && <ArrowRight size={17} />}</button><p className="store-payment-note"><ShieldCheck size={14} /> Your payment details are protected.</p>
           </aside>
         </section>
 
