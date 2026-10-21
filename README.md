@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nexus Topup storefront
 
-## Getting Started
+Next.js storefront for the Laravel Game Topup API.
 
-First, run the development server:
+## Local development
 
-```bash
+1. Start the Laravel API from `gametopup-website` and seed its catalog:
+
+   ```powershell
+   php artisan migrate --seed
+   php artisan serve
+   ```
+
+2. Start the frontend from this directory:
+
+   ```powershell
+   npm install
+   npm run dev
+   ```
+
+3. Open [http://localhost:3000](http://localhost:3000).
+
+The frontend uses `https://game-topup-4.onrender.com/api` by default. To use another API URL, set `NEXT_PUBLIC_API_BASE_URL` in a local `.env.local` file. Set the same variable in the frontend deployment environment and redeploy after changing it. In the Laravel Render service, set `FRONTEND_URLS` to the exact deployed frontend origin (for example, `https://your-frontend.onrender.com`) so the browser can access the API.
+
+The operations dashboard is available at `/admin`. Create an administrator from the backend with `php artisan admin:create`; no default admin credentials are seeded. Keep payment and supplier credentials in the Laravel dashboard/backend environment only.
+
+## Available scripts
+
+```powershell
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Checkout uses real Bakong individual KHQR; simulated payments are disabled. Configure an eligible Bakong account ID, account name, city, and API token in the protected Laravel admin dashboard or backend environment. Never put payment or supplier credentials in the frontend environment.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Customers can verify the Player ID (and Zone ID when required) to see the provider-returned player name. This check is optional; checkout remains available when no verification provider is configured. For Free Fire and Delta Force provider options, see the Laravel README. Verification expires after 10 minutes and is bound to the selected game and entered IDs.
