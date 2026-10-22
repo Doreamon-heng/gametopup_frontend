@@ -38,6 +38,7 @@ function CheckoutContent({ params }: { params: Promise<{ orderNumber: string }> 
   const [error, setError] = useState('');
   const [retrying, setRetrying] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const refreshOrder = useCallback(async () => {
     try {
@@ -84,8 +85,6 @@ function CheckoutContent({ params }: { params: Promise<{ orderNumber: string }> 
   }, [order?.payment_status, order?.delivery_status, order?.created_at, refreshOrder]);
 
   const handleCancel = async () => {
-    if (!window.confirm('Cancel this order only if you have not paid. Its QR may remain payable until it expires. If payment completes, the order will still be processed.')) return;
-
     setCanceling(true);
     setError('');
     try {
@@ -108,6 +107,19 @@ function CheckoutContent({ params }: { params: Promise<{ orderNumber: string }> 
 
   return (
     <main className="checkout-v2">
+      {showCancelDialog && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/80 px-4 backdrop-blur-sm" role="presentation" onClick={() => setShowCancelDialog(false)}>
+          <section role="dialog" aria-modal="true" aria-labelledby="cancel-order-title" aria-describedby="cancel-order-description" className="w-full max-w-sm rounded-2xl border border-amber-300/20 bg-[#101827] p-6 shadow-2xl shadow-black/60" onClick={(event) => event.stopPropagation()}>
+            <CircleAlert size={34} className="text-amber-300" />
+            <h2 id="cancel-order-title" className="mt-4 text-lg font-black text-white">Cancel this payment?</h2>
+            <p id="cancel-order-description" className="mt-2 text-sm leading-6 text-slate-300">Only continue if you have not paid. The QR may remain payable until it expires in 15 minutes. If Bakong confirms payment, we will still process your order.</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button type="button" autoFocus onClick={() => setShowCancelDialog(false)} className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/[0.06]">Keep payment</button>
+              <button type="button" onClick={() => { setShowCancelDialog(false); void handleCancel(); }} className="rounded-xl bg-rose-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-rose-400">Cancel order</button>
+            </div>
+          </section>
+        </div>
+      )}
       <LoadingDialog open={(!order && !error) || retrying || canceling} title={canceling ? 'Cancelling your order' : retrying ? 'Checking your order' : 'Loading checkout'} message={canceling ? 'Checking Bakong and updating your order.' : retrying ? 'Fetching the latest secure payment status.' : 'Retrieving your Bakong payment details.'} />
       <header className="checkout-v2-header"><Link href="/" className="checkout-v2-brand">NEXUS<span>.</span></Link><Link href="/"><ArrowLeft size={15} /> Back to store</Link></header>
       <div className="checkout-v2-wrap">
@@ -210,7 +222,7 @@ function CheckoutContent({ params }: { params: Promise<{ orderNumber: string }> 
                 )}
                 <div className="mx-auto max-w-sm space-y-3 pt-2">
                   <p className="text-xs leading-5 text-amber-100/80">Only cancel if you have not paid. The QR may stay payable until its 15-minute expiry; any confirmed payment will still be processed.</p>
-                  <button type="button" disabled={canceling} onClick={() => void handleCancel()} className="rounded-xl border border-rose-300/20 px-4 py-2.5 text-sm font-bold text-rose-200 transition hover:bg-rose-300/10 disabled:opacity-50">{canceling ? 'Cancelling…' : 'Cancel this order'}</button>
+                  <button type="button" disabled={canceling} onClick={() => setShowCancelDialog(true)} className="rounded-xl border border-rose-300/20 px-4 py-2.5 text-sm font-bold text-rose-200 transition hover:bg-rose-300/10 disabled:opacity-50">Cancel this order</button>
                 </div>
               </div>
             ) : (
