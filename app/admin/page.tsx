@@ -1374,7 +1374,7 @@ export default function AdminPage() {
 
                       {addingPackageGameId === game.id && (
 
-                        <form onSubmit={(event) => void createPackage(event, game)} className="mt-4 grid gap-3 border-t border-white/[0.07] pt-4 sm:grid-cols-2 xl:grid-cols-7">
+                        <form onSubmit={(event) => void createPackage(event, game)} className="mt-4 grid min-w-0 grid-cols-1 gap-4 border-t border-white/[0.07] pt-4 sm:grid-cols-2 lg:grid-cols-4">
 
                           <label className="admin-field-label">Package amount or title<input name="name" required maxLength={120} className="admin-input" placeholder="e.g. 172 or 7 days" /></label>
 
@@ -1388,13 +1388,9 @@ export default function AdminPage() {
 
                           <label className="admin-field-label">Package artwork (optional)<input name="image" type="file" accept="image/jpeg,image/png,image/webp" className="admin-input" /></label>
 
-                          <div className="flex items-end gap-2">
+                          <label className="admin-field-label min-w-0">Badge (optional)<input name="badge" maxLength={40} className="admin-input" placeholder="Popular" /></label>
 
-                            <label className="admin-field-label min-w-0 flex-1">Badge (optional)<input name="badge" maxLength={40} className="admin-input" placeholder="Popular" /></label>
-
-                            <button type="submit" disabled={busy} className="admin-primary-button shrink-0">{busy ? 'Savingâ€¦' : 'Add package'}</button>
-
-                          </div>
+                          <button type="submit" disabled={busy} className="admin-primary-button w-full self-end">{busy ? 'Savingâ€¦' : 'Add package'}</button>
 
                         </form>
 
