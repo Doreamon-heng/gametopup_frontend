@@ -90,7 +90,7 @@ interface AdminOrder {
 
   currency: 'USD' | 'KHR';
 
-  payment_status: 'pending' | 'paid' | 'failed';
+  payment_status: 'pending' | 'paid' | 'failed' | 'cancelled';
 
   delivery_status: 'pending' | 'processing' | 'completed' | 'failed';
 
@@ -1430,7 +1430,7 @@ export default function AdminPage() {
 
                   <label className="relative"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" /><input aria-label="Search orders" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search order or player" className="admin-filter-input pl-9" /></label>
 
-                  <select aria-label="Filter payment status" value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)} className="admin-filter-input"><option value="">All payments</option><option value="pending">Pending</option><option value="paid">Paid</option><option value="failed">Failed</option></select>
+                  <select aria-label="Filter payment status" value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)} className="admin-filter-input"><option value="">All payments</option><option value="pending">Pending</option><option value="paid">Paid</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option></select>
 
                   <select aria-label="Filter delivery status" value={deliveryFilter} onChange={(event) => setDeliveryFilter(event.target.value)} className="admin-filter-input"><option value="">All delivery</option><option value="pending">Pending</option><option value="processing">Processing</option><option value="completed">Completed</option><option value="failed">Failed</option></select>
 

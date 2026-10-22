@@ -60,8 +60,9 @@ export interface Game {
 
 export interface OrderStatus {
   order_number: string;
-  payment_status: 'pending' | 'paid' | 'failed';
+  payment_status: 'pending' | 'paid' | 'failed' | 'cancelled';
   delivery_status: 'pending' | 'processing' | 'completed' | 'failed';
+  created_at: string;
   paid_at: string | null;
   player_id: string;
   zone_id: string | null;
@@ -129,4 +130,8 @@ export const verifyPlayer = async (data: {
 export const checkOrderStatus = async (orderNumber: string): Promise<OrderStatus> => {
   const response = await api.get<OrderStatus>(`/v1/orders/${encodeURIComponent(orderNumber)}/status`);
   return response.data;
+};
+
+export const cancelOrder = async (orderNumber: string): Promise<void> => {
+  await api.post(`/v1/orders/${encodeURIComponent(orderNumber)}/cancel`);
 };

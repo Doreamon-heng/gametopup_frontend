@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import { ArrowLeft, CheckCircle2, CircleAlert, Loader2, ShieldCheck } from 'lucide-react';
 import {
+  cancelOrder,
   checkOrderStatus,
   getErrorMessage,
   OrderStatus,
@@ -36,6 +37,7 @@ function CheckoutContent({ params }: { params: Promise<{ orderNumber: string }> 
   const [order, setOrder] = useState<OrderStatus | null>(null);
   const [error, setError] = useState('');
   const [retrying, setRetrying] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   const refreshOrder = useCallback(async () => {
     try {
@@ -67,17 +69,46 @@ function CheckoutContent({ params }: { params: Promise<{ orderNumber: string }> 
   }, [orderNumber]);
 
   useEffect(() => {
-    if (order?.payment_status !== 'pending' && order?.delivery_status !== 'processing') return;
+    const pending = order?.payment_status === 'pending';
+    const reconcilingRecentCancel = order?.payment_status === 'cancelled'
+      && Date.now() < new Date(order.created_at).getTime() + 30 * 60 * 1000;
+    if (!pending && !reconcilingRecentCancel && order?.delivery_status !== 'processing') return;
     const interval = window.setInterval(() => void refreshOrder(), 30000);
-    return () => window.clearInterval(interval);
-  }, [order?.payment_status, order?.delivery_status, refreshOrder]);
+    const stopReconciliation = reconcilingRecentCancel
+      ? window.setTimeout(() => window.clearInterval(interval), Math.max(0, new Date(order.created_at).getTime() + 30 * 60 * 1000 - Date.now()))
+      : undefined;
+    return () => {
+      window.clearInterval(interval);
+      if (stopReconciliation) window.clearTimeout(stopReconciliation);
+    };
+  }, [order?.payment_status, order?.delivery_status, order?.created_at, refreshOrder]);
+
+  const handleCancel = async () => {
+    if (!window.confirm('Cancel this order only if you have not paid. Its QR may remain payable until it expires. If payment completes, the order will still be processed.')) return;
+
+    setCanceling(true);
+    setError('');
+    try {
+      await cancelOrder(orderNumber);
+      setOrder((currentOrder) => currentOrder
+        ? { ...currentOrder, payment_status: 'cancelled', verification_message: null }
+        : currentOrder);
+      await refreshOrder();
+    } catch (requestError) {
+      await refreshOrder();
+      setError(getErrorMessage(requestError));
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   const paid = order?.payment_status === 'paid';
   const failed = order?.payment_status === 'failed';
+  const cancelled = order?.payment_status === 'cancelled';
 
   return (
     <main className="checkout-v2">
-      <LoadingDialog open={(!order && !error) || retrying} title={retrying ? 'Checking your order' : 'Loading checkout'} message={retrying ? 'Fetching the latest secure payment status.' : 'Retrieving your Bakong payment details.'} />
+      <LoadingDialog open={(!order && !error) || retrying || canceling} title={canceling ? 'Cancelling your order' : retrying ? 'Checking your order' : 'Loading checkout'} message={canceling ? 'Checking Bakong and updating your order.' : retrying ? 'Fetching the latest secure payment status.' : 'Retrieving your Bakong payment details.'} />
       <header className="checkout-v2-header"><Link href="/" className="checkout-v2-brand">NEXUS<span>.</span></Link><Link href="/"><ArrowLeft size={15} /> Back to store</Link></header>
       <div className="checkout-v2-wrap">
         <div className="checkout-v2-title"><span>SECURE ORDER CHECKOUT</span><h1>Complete your payment</h1><p>Scan your KHQR with a Bakong enabled banking app.</p></div>
@@ -153,6 +184,13 @@ function CheckoutContent({ params }: { params: Promise<{ orderNumber: string }> 
                 <h2 className="mt-5 text-2xl font-black text-white">Payment not completed</h2>
                 <p className="mt-2 text-sm text-slate-400">This payment was marked as failed. Please create a new order if you still want to top up.</p>
               </div>
+            ) : cancelled ? (
+              <div className="py-8 text-center">
+                <CircleAlert size={60} className="mx-auto text-amber-300" />
+                <h2 className="mt-5 text-2xl font-black text-white">Order cancelled</h2>
+                <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-400">If you completed payment before cancelling, we are still checking with Bakong and will process the order if payment is confirmed.</p>
+                <Link href="/" className="mt-5 inline-flex rounded-xl bg-lime-400 px-5 py-3 text-sm font-bold text-slate-950">Back to store</Link>
+              </div>
             ) : order.khqr_string ? (
               <div className="space-y-5 py-3 text-center">
                 <div className="inline-block rounded-2xl bg-white p-4">
@@ -170,6 +208,10 @@ function CheckoutContent({ params }: { params: Promise<{ orderNumber: string }> 
                     {order.verification_message}
                   </p>
                 )}
+                <div className="mx-auto max-w-sm space-y-3 pt-2">
+                  <p className="text-xs leading-5 text-amber-100/80">Only cancel if you have not paid. The QR may stay payable until its 15-minute expiry; any confirmed payment will still be processed.</p>
+                  <button type="button" disabled={canceling} onClick={() => void handleCancel()} className="rounded-xl border border-rose-300/20 px-4 py-2.5 text-sm font-bold text-rose-200 transition hover:bg-rose-300/10 disabled:opacity-50">{canceling ? 'Cancelling…' : 'Cancel this order'}</button>
+                </div>
               </div>
             ) : (
               <div role="alert" className="rounded-xl border border-rose-400/20 bg-rose-400/[0.08] p-4 text-sm leading-6 text-rose-200">
@@ -183,7 +225,7 @@ function CheckoutContent({ params }: { params: Promise<{ orderNumber: string }> 
 
             <div className="mt-7 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-4 text-xs">
               <span className="text-slate-500">Order <span className="font-bold text-slate-300">{order.order_number}</span></span>
-              <span className={`font-bold uppercase tracking-wider ${paid ? 'text-emerald-300' : failed ? 'text-rose-300' : 'text-cyan-200'}`}>
+              <span className={`font-bold uppercase tracking-wider ${paid ? 'text-emerald-300' : failed ? 'text-rose-300' : cancelled ? 'text-amber-300' : 'text-cyan-200'}`}>
                 {order.payment_status}
               </span>
             </div>
