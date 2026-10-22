@@ -752,7 +752,6 @@ export default function AdminPage() {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
-    formData.set('_method', 'PATCH');
     formData.set('has_zone_id', formData.has('has_zone_id') ? '1' : '0');
     formData.set('is_active', formData.has('is_active') ? '1' : '0');
 
